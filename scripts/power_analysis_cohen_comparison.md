@@ -135,3 +135,44 @@ elegida por este paquete, más que con un procedimiento necesario en
 general. Este paquete es la implementación del libro [Cohen -
 Statistical Power Analysis for the Behavioral
 Sciences](https://drive.google.com/open?id=1_fZ6zUU9Zv9-gnBZVlz2Uw80aQNCghK1).
+Allí dice (sección 6.2, p.180):
+
+If we were to define j = P 1 - P 2 , and try to use j as our ES, we
+would soon discover that the delectability of some given value of j,
+under given fixed conditions of a and n, would not be constant, but
+would vary depending upon where along the scale of P between zero and
+one the value j occurred.
+
+Luego procede a sugerir usar como h la diferencia entre las
+probabilidades transformadas por 2\*arcsin(sqrt(p)). No obstante, en la
+implementación power\_calculation\_manual no se hizo nada por el estilo,
+y sin embargo llegamos al mismo resultado.
+
+En efecto, en ese mismo capítulo un poco más arriba menciona:
+
+It is possible to approach the testing of hypotheses about proportions
+by different statistical techniques, including **the classical normal
+curve test using a “critical ratio” applied directly to the
+proportions** (Edwards, 1972, pp. 42-44; Guilford\&Fruchter, 1978,
+pp. 159-161; Blalock, 1972, pp. 228-232), by a chi-square contingency
+test (see Chapter 7 and references), by a special case of the
+hypergeometric probability distribution ("Fisher’s Exact Method’’) for 2
+x 2 tables (Hays, 1981, pp. 552-554; Owen, 1962, pp. 479-496), **or by
+means of a normal curve test applied to the arcsine transformation of
+the proportions. Despite its unfamiliarity, it is the last of these
+alternatives that provides the basis for the approach of this chapter
+because of certain advantages it has, particularly from the viewpoint of
+power analysis**. However, the results from using any of these
+procedures will be the same to a close approximation, particularly when
+samples are not small (Cohen, 1970).
+
+Lo bueno es que refuerza y reconoce que su método es análogo al clásico.
+Lo malo es que por ahora no me quedan claros los pormenores de su
+método, ni cuáles son esas *ciertas ventajas* que menciona.
+
+En la introducción (sección 1.4) habla de la necesidad de normalizar
+escalas para desprenderse de unidades, en particular teniendo en cuenta
+que después presenta tablas de referencia para consultar potencias y
+tamaños de muestra. Así que puede ser que una normalización permita una
+ventaja en ese sentido. Pero la verdad que por ahora no me queda claro;
+y tampoco sé si vale la pena en esta instancia.
