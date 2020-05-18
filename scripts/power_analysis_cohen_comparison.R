@@ -31,17 +31,17 @@ power_calculation_manual <- function(thetaA, effect_size, nA, nB, alpha = 0.05, 
   
   muDiff_null <- thetaA - thetaB_null
   sigmaDiff_null <- sqrt(sigmaA^2 + sigmaB_null^2)
-  crit_value <- case_when(tail == 'right' ~ qnorm(1 - alpha, muDiff_null, sigmaDiff_null),
-                          tail == 'left' ~ qnorm(alpha, muDiff_null, sigmaDiff_null),
-                          tail == 'two.tailed' ~ qnorm(1 - alpha / 2, muDiff_null, sigmaDiff_null))
+  crit_value <- case_when(tail == 'greater' ~ qnorm(1 - alpha, muDiff_null, sigmaDiff_null),
+                          tail == 'less' ~ qnorm(alpha, muDiff_null, sigmaDiff_null),
+                          tail == 'two.sided' ~ qnorm(1 - alpha / 2, muDiff_null, sigmaDiff_null))
   
   muDiff_alt <- thetaA - thetaB_alt
   sigmaDiff_alt <- sqrt(sigmaA^2 + sigmaB_alt^2)
   
   beta <- pnorm(crit_value, muDiff_alt, sigmaDiff_alt)
-  beta <- case_when(tail == 'right' ~ pnorm(crit_value, muDiff_alt, sigmaDiff_alt),
-                    tail == 'left' ~ 1 - pnorm(crit_value, muDiff_alt, sigmaDiff_alt),
-                    tail == 'two.tailed' ~ pnorm(crit_value, muDiff_alt, sigmaDiff_alt) - pnorm(-crit_value, muDiff_alt, sigmaDiff_alt) )
+  beta <- case_when(tail == 'greater' ~ pnorm(crit_value, muDiff_alt, sigmaDiff_alt),
+                    tail == 'less' ~ 1 - pnorm(crit_value, muDiff_alt, sigmaDiff_alt),
+                    tail == 'two.sided' ~ pnorm(crit_value, muDiff_alt, sigmaDiff_alt) - pnorm(-crit_value, muDiff_alt, sigmaDiff_alt) )
   power <- 1 - beta
   list(thetaA = thetaA, effect_size = effect_size, nA = nA, nB = nB, alpha = alpha, tail = tail, beta = beta, power = power)
 }
