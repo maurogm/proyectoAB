@@ -92,7 +92,7 @@ pvalor(k1, k)
 #' **Alternativamente**, en vez de calcular el p-valor, puedo ir calculando la suma cumulativa de probabilidades puntuales,
 #' de modo que al llegar a _1 - alpha_ habré encontrado el valor crítico del test.
 x1_posibles <- seq(0, k)
-probs_acumuladas <- cumsum(sumando(p, k, xs))
+probs_acumuladas <- cumsum(sumando(p, k, x1_posibles))
 crit_val <- x1_posibles[probs_acumuladas > (1 - alpha)][1]
 # Rechazo H0 sii k1 > crit_val
 crit_val
@@ -124,6 +124,8 @@ var(sims)
 lambda1/n1 + lambda2/n2
 
 #' ### Implementación del E-test
+#' 
+#' #### Implementación tomando una malla arbitraria de valores en (X1, X2)
 
 #' Estimador de la varianza de la diferencia entre X1 y X2:
 var_hat <- function(x1, x2, n1, n2) x1 / n1^2 + x2 / n2^2
@@ -160,10 +162,9 @@ p_puntual_x1_x2 <- function(x1, x2) p_puntual_poisson(x2, n2 * lambda2k_hat) * p
 #' ni aprovechar la recursividad de P(X = j+1) = P(X = j) * lambda / (j+1) para hacer más eficientes las cuentas.
 #' 
 #' En vez de ello, tomamos "a ojo" un rango suficientemente grande y calculamos las probabilidades puntuales correspondientes.
-
 expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
-x1_max <- 2 * ceiling(n2 * lambda2k_hat)
-x2_max <- 2 * ceiling(n1 * (lambda2k_hat + d))
+x1_max <- 2 * ceiling(n1 * (lambda2k_hat + d))
+x2_max <- 2 * ceiling(n2 * lambda2k_hat)
 grid_x1_x2 <- expand.grid.df(1:x1_max, 1:x2_max) %>% setnames(c('x1', 'x2'))
 probs <- map2_dbl(grid_x1_x2$x1, grid_x1_x2$x2, p_puntual_x1_x2)
 estadisticoT <- map2_dbl(grid_x1_x2$x1, grid_x1_x2$x2, function(x1, x2) T_x1_x2(x1, x2, n1, n2, d))
@@ -188,4 +189,171 @@ sumandos_consolidados[, .(suma_probabilidades = sum(probs)), indicadora]
 #' Es interesante notar que el E-test logra rechazar la Hipótesis Nula, mientras que el C-test no lo había hecho, 
 #' al haber llegado a un p-valor de ```r pvalor(k1, k) ```.
 #' Esto está en consonancia con la afirmación respecto a mayor potencia por parte de Krishnamoorthy y Thomson.
+
+
+#' 
+#' #### Implementación iterando sobre la distancia a la moda hasta obtener una estimación del p-valor suficiente
+
+param_poisson1 <- n1 * (lambda2k_hat + d)
+param_poisson2 <- n2 * lambda2k_hat
+
+moda1 <- floor(param_poisson1)
+moda2 <- floor(param_poisson2)
+
+
+#' Distintas funciones para devolver una tabla con todos los puntos (x1, x2) a una cierta distancia de un punto central:
+calcula_puntos_a_distancia_de_moda <- function(dist_moda, moda1, moda2) {
+  if (dist_moda == 0) {
+    x1 <- 0
+    x2 <- 0
+  } else {
+    x1 <- c(seq(-dist_moda, 0), seq_len(dist_moda), rev(-seq_len(dist_moda-1)), 0, seq_len(dist_moda-1))
+    x2 <- c(seq(0, dist_moda), rev(seq_len(dist_moda-1)), -seq(0, dist_moda), -rev(seq_len(dist_moda-1)))
+    }
+  data.table(x1 = x1 + moda1, x2 = x2 + moda2)
+}
+calcula_puntos_a_distancia_de_moda2 <- function(dist_moda, moda1, moda2) {
+  grid_x1_x2 <- expand.grid.df(seq(moda1 - dist_moda, moda1 + dist_moda),
+                               seq(moda2 - dist_moda, moda2 + dist_moda)) %>% 
+    setnames(c('x1', 'x2')) %>% 
+    setDT()
+  grid_x1_x2 %>% 
+    .[abs(x1 - moda1) + abs(x2 - moda2) == dist_moda]
+}
+calcula_puntos_a_distancia_de_moda3 <- function(dist_moda, moda1, moda2) {
+  points_list <- list()
+  points_dt <- data.table()
+  if (dist_moda > 1) {
+    for(i in seq_len(dist_moda - 1)) {
+      points_list <- list(data.table(i,  dist_moda - i), 
+                          data.table(i, -dist_moda + i)) %>% 
+        c(points_list)
+    }
+    points_dt_partial <- rbindlist(points_list) %>% setnames(c('x1', 'x2'))
+    points_dt <- points_dt_partial %>% 
+      copy() %>% 
+      .[, x1 := -x1] %>% #crea puntos espejados respecto del eje y
+      rbind(points_dt_partial)
+  }
+  points_dt <- data.table(x1 = c(dist_moda, -dist_moda, 0, 0), #agrega vértices del rombo
+                          x2 = c(0, 0, dist_moda, -dist_moda)) %>% 
+    unique() %>% 
+    rbind(points_dt)
+  #Centra rombo en los los puntos de mayor probabilidad:
+  points_dt[, x1 := x1 + moda1]
+  points_dt[, x2 := x2 + moda2]
+  #points_dt <- points_dt[x1 > n1 * d]
+  #points_dt <- points_dt[x2 < x1 * n2 / n1]
+  return(points_dt)
+}
+
+
+#' Funciones que usan la fórmula recursiva para agregar a una tabla las probabilidades anteriores y posteriores:
+add_next_prob <- function(prob_table, param_poisson) {
+  max_value <- max(prob_table[, x])
+  rbind(prob_table,
+        data.table(x = max_value + 1,
+                   p = param_poisson / (max_value + 1) * prob_table[x == max_value, p]))
+}
+add_previous_prob <- function(prob_table, param_poisson) {
+  min_value <- min(prob_table[, x])
+  if (min_value <= 0) return(prob_table)
+  rbind(data.table(x = min_value - 1,
+                   p = min_value / param_poisson * prob_table[x == min_value, p]),
+        prob_table)
+}
+
+
+#' Implementación del test usando la forma recursivida e iternado sobre la distancia a la moda:
+tabla_probs1 <- data.table(x = moda1,
+                           p = p_puntual_poisson(moda1, param_poisson1))
+tabla_probs2 <- data.table(x = moda2,
+                           p = p_puntual_poisson(moda2, param_poisson2))
+dist_moda <- 0
+counter <- 0
+cdf <- data.table(indicadora = c(TRUE, FALSE), p_acum = c(0, 0))
+while (cdf[indicadora == TRUE, p_acum] < alpha & cdf[indicadora == FALSE, p_acum] < (1 - alpha)) {
+  current_lvl <- calcula_puntos_a_distancia_de_moda(dist_moda, moda1, moda2) %>% 
+    merge(tabla_probs1, by.x = 'x1', by.y = 'x') %>% 
+    merge(tabla_probs2, by.x = 'x2', by.y = 'x') %>% 
+    .[, p := p.x * p.y] %>% 
+    #.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %>% 
+    .[, estadisticoT := map2_dbl(x1, x2, function(x1, x2) T_x1_x2(x1, x2, n1, n2, d))] %>% 
+    .[, indicadora := estadisticoT >= T_k1_k2]
+  p_acum_current_lvl <- current_lvl[, .(p_acum = sum(p)), indicadora]
+  
+  cdf <- cdf %>% 
+    rbind(p_acum_current_lvl) %>% 
+    .[, .(p_acum = sum(p_acum)), indicadora]
+  
+  dist_moda <- dist_moda + 1
+  tabla_probs1 <- tabla_probs1 %>% add_previous_prob(param_poisson1) %>% add_next_prob(param_poisson1)
+  tabla_probs2 <- tabla_probs2 %>% add_previous_prob(param_poisson2) %>% add_next_prob(param_poisson2)
+  counter <- counter + nrow(current_lvl)
+  }
+cdf
+
+
+
+#' 
+#' #### Implementación calculando las probabilidades recursivamente hasta cierta cota, y usando la malla que queda definida
+
+param_poisson1 <- n1 * (lambda2k_hat + d)
+param_poisson2 <- n2 * lambda2k_hat
+
+moda1 <- floor(param_poisson1)
+moda2 <- floor(param_poisson2)
+
+c_probs_poisson_desde_moda <- function(moda, param_poisson, cota = 1E-07) {
+  p_moda <- p_puntual_poisson(moda, param_poisson)
+  
+  p_vec <- c(rep(0, 1000))
+  indice <- 0
+  k <- moda
+  p_k <- p_moda
+  while (p_k > cota) {
+    k <- k + 1
+    p_k <- param_poisson / k * p_k
+    indice <- indice + 1
+    p_vec[indice] <- p_k
+  }
+  x_vec_up <- seq(moda + 1, moda + indice)
+  p_vec_up <- p_vec[1:indice]
+  
+  p_vec <- c(rep(0, 1000))
+  indice <- 0
+  k <- moda
+  p_k <- p_moda
+  while (p_k > cota & k > 0) {
+    p_k <- k / param_poisson * p_k
+    k <- k - 1
+    indice <- indice + 1
+    p_vec[indice] <- p_k
+  }
+  x_vec_down <- seq(moda - 1, moda - indice)
+  p_vec_down <- p_vec[1:indice]
+  
+  tabla_probs <- data.table(x = c(x_vec_down, x_vec_up, moda),
+                            p = c(p_vec_down, p_vec_up, p_moda)) %>% 
+    setkey(x)
+}
+
+
+cota <- 1E-07
+tabla_probs1 <- c_probs_poisson_desde_moda(moda1, param_poisson1, cota) %>% setnames(c('x1', 'p1'))
+tabla_probs2 <- c_probs_poisson_desde_moda(moda2, param_poisson2, cota) %>% setnames(c('x2', 'p2'))
+
+cross_join_dt <- function(DT1,DT2) {
+  setkey(DT1[,c(llave_temporal_unica = 1,.SD)],llave_temporal_unica) %>% 
+    .[setkey(DT2[,c(llave_temporal_unica=1,.SD)], llave_temporal_unica),allow.cartesian=TRUE] %>% 
+    .[,llave_temporal_unica:=NULL]
+}
+
+dt_terms_sumatoria <- cross_join_dt(tabla_probs1, tabla_probs2) %>% 
+  .[, p := p1 * p2] %>% 
+  #.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %>% 
+  .[, estadisticoT := map2_dbl(x1, x2, function(x1, x2) T_x1_x2(x1, x2, n1, n2, d))] %>% 
+  .[, indicadora := estadisticoT >= T_k1_k2]
+cdf <- dt_terms_sumatoria[, .(p_acum = sum(p)), indicadora]
+cdf
 
