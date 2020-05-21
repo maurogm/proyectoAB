@@ -130,7 +130,14 @@ lambda1/n1 + lambda2/n2
 #' Estimador de la varianza de la diferencia entre X1 y X2:
 var_hat <- function(x1, x2, n1, n2) x1 / n1^2 + x2 / n2^2
 #' Se usa la diferencia estandarizada como estadístico pivot, donde _d_ es la diferencia pautada por la Hipótesis Nula (comunmente 0):
-T_x1_x2 <- function(x1, x2, n1, n2, d) (x1 / n1 - x2 / n2 - d) / sqrt(var_hat(x1, x2, n1, n2))
+T_x1_x2 <- function(x1, x2, n1, n2, d) {
+  if (x1 == 0 && x2 == 0) {
+    if (d == 0) T <- 0 else T <- -Inf
+  } else {
+    return((x1 / n1 - x2 / n2 - d) / sqrt(var_hat(x1, x2, n1, n2)))
+  }
+  return(T)
+}
 
 #' Dadas las muestras (k1, k2, n1, n2) obtenidas, el valor observado para el estadístico T es:
 T_k1_k2 <- T_x1_x2(k1, k2, n1, n2, d)
@@ -145,7 +152,7 @@ if (lambda2k_hat <= 0) {
 }
 
 #' Para una Poisson(lambda), la función de probabilidad puntual es:
-p_puntual_poisson <- function(x, lambda) exp(-lambda) * lambda^x / factorial(x)
+p_puntual_poisson <- function(x, lambda) dpois(x, lambda) #exp(-lambda) * lambda^x / factorial(x)
 
 #' Luego, para el vector (X1, X2) bajo la H0 y con lambda2 estimado por lambda2k_hat, la función de probabilidad puntual es:
 p_puntual_x1_x2 <- function(x1, x2) p_puntual_poisson(x2, n2 * lambda2k_hat) * p_puntual_poisson(x1, n1 * (lambda2k_hat + d)) 
@@ -265,6 +272,7 @@ add_previous_prob <- function(prob_table, param_poisson) {
 
 
 #' Implementación del test usando la forma recursivida e iternado sobre la distancia a la moda:
+#' 
 tabla_probs1 <- data.table(x = moda1,
                            p = p_puntual_poisson(moda1, param_poisson1))
 tabla_probs2 <- data.table(x = moda2,
@@ -298,13 +306,8 @@ cdf
 #' 
 #' #### Implementación calculando las probabilidades recursivamente hasta cierta cota, y usando la malla que queda definida
 
-param_poisson1 <- n1 * (lambda2k_hat + d)
-param_poisson2 <- n2 * lambda2k_hat
-
-moda1 <- floor(param_poisson1)
-moda2 <- floor(param_poisson2)
-
-c_probs_poisson_desde_moda <- function(moda, param_poisson, cota = 1E-07) {
+c_probs_poisson_desde_moda <- function(param_poisson, cota = 1E-07) {
+  moda <- floor(param_poisson)
   p_moda <- p_puntual_poisson(moda, param_poisson)
   
   p_vec <- c(rep(0, 1000))
@@ -338,22 +341,77 @@ c_probs_poisson_desde_moda <- function(moda, param_poisson, cota = 1E-07) {
     setkey(x)
 }
 
-
-cota <- 1E-07
-tabla_probs1 <- c_probs_poisson_desde_moda(moda1, param_poisson1, cota) %>% setnames(c('x1', 'p1'))
-tabla_probs2 <- c_probs_poisson_desde_moda(moda2, param_poisson2, cota) %>% setnames(c('x2', 'p2'))
-
 cross_join_dt <- function(DT1,DT2) {
   setkey(DT1[,c(llave_temporal_unica = 1,.SD)],llave_temporal_unica) %>% 
     .[setkey(DT2[,c(llave_temporal_unica=1,.SD)], llave_temporal_unica),allow.cartesian=TRUE] %>% 
     .[,llave_temporal_unica:=NULL]
 }
 
-dt_terms_sumatoria <- cross_join_dt(tabla_probs1, tabla_probs2) %>% 
-  .[, p := p1 * p2] %>% 
-  #.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %>% 
-  .[, estadisticoT := map2_dbl(x1, x2, function(x1, x2) T_x1_x2(x1, x2, n1, n2, d))] %>% 
-  .[, indicadora := estadisticoT >= T_k1_k2]
-cdf <- dt_terms_sumatoria[, .(p_acum = sum(p)), indicadora]
-cdf
+etest_con_cota <- function(k1, k2, n1, n2, d, alpha = 0.05, cota = 1E-07) {
+  lambda2k_hat <- (k1 + k2) / (n1 + n2) - d * n1 / (n1 + n2)
+  if (lambda2k_hat <= 0) return(list(cdf = data.table(indicadora = FALSE, p_acum = 1), rejectH0 = FALSE))
+  param_poisson1 <- n1 * (lambda2k_hat + d)
+  param_poisson2 <- n2 * lambda2k_hat
+  T_k1_k2 <- T_x1_x2(k1, k2, n1, n2, d)
+  
+  tabla_probs1 <- c_probs_poisson_desde_moda(param_poisson1, cota) %>% setnames(c('x1', 'p1'))
+  tabla_probs2 <- c_probs_poisson_desde_moda(param_poisson2, cota) %>% setnames(c('x2', 'p2'))
+  
+  dt_terms_sumatoria <- cross_join_dt(tabla_probs1, tabla_probs2) %>% 
+    .[, p := p1 * p2] %>% 
+    #.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %>% 
+    .[, estadisticoT := map2_dbl(x1, x2, function(x1, x2) T_x1_x2(x1, x2, n1, n2, d))] %>% 
+    .[, indicadora := estadisticoT >= T_k1_k2]
+  cdf <- dt_terms_sumatoria[, .(p_acum = sum(p)), indicadora]
+  if(cdf[indicadora == FALSE, p_acum] > (1 - alpha)) {
+    rejectH0 <- TRUE
+  } else if (cdf[indicadora == TRUE, p_acum] > alpha) {
+    rejectH0 <- FALSE
+  } else {
+    #stop("No se pudo determinar si la H0 se debe rechazar o no. Disminuir la cota e intentar de nuevo")
+    #Si la cota no es suficiente, la bajo y pruebo de nuevo:
+    return(etest_con_cota(k1, k2, n1, n2, d, cota = cota / 10))
+  }
+  
+  list(rejectH0 = rejectH0, cdf = cdf, pvalue = cdf[indicadora == TRUE, p_acum], probNoAsignada = 1 - cdf[, sum(p_acum)])
+}
 
+#' Resultado:
+etest_con_cota(k1, k2, n1, n2, d, cota = 1E-04)
+
+#' Resultado del E-test para el Ejemplo 1 del paper:
+etest_ejemplo_1 <- etest_con_cota(k1 = 3, k2 = 0, n1 = 1, n2 = 1, d = 0, cota = 1E-04)
+etest_ejemplo_1
+#' Dado que en el paper se deseaba un test a dos colas, 
+#' el p-valor sería el doble que el anterior, es decir ```r etest_ejemplo_1$pvalue * 2```.
+
+#' 
+#' #### Cálculo de potencia del E-test
+
+potencia_eTest <- function(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, 
+                            alpha = 0.05, cota_potencia = 1E-03, cota_test = 1E-04) {
+  param_poisson1 <- lambda1_esperado * n1_esperado
+  param_poisson2 <- lambda2_esperado * n2_esperado
+  
+  tabla_probs1 <- c_probs_poisson_desde_moda(param_poisson1, cota) %>% setnames(c('k1', 'pk1'))
+  tabla_probs2 <- c_probs_poisson_desde_moda(param_poisson2, cota) %>% setnames(c('k2', 'pk2'))
+  
+  indicadora_para_potencia <- function(k1, k2) etest_con_cota(k1, k2, n1_esperado, n2_esperado, d, alpha, cota_test)$rejectH0
+  dt_terms_sumatoria <- cross_join_dt(tabla_probs1, tabla_probs2) %>% 
+    .[(k2 < n2 * k1 / n1 - n2 * d) & (k1 > n1 * d)] %>% #Para estos ya sé que lambda2 < 0
+    .[, p := pk1 * pk2] %>% 
+    .[, indicadora := map2_lgl(k1, k2, indicadora_para_potencia)]
+  cdf <- dt_terms_sumatoria[, .(power = sum(p)), indicadora]
+  list(power = cdf[indicadora == TRUE, power], probNoAsignada = 1 - cdf[, sum(power)], cdf = cdf)
+}
+
+#' Cálculo de la potencia para el ejemplo 2 del paper:
+lambda1_esperado <- 0.04 * 94.3
+lambda2_esperado <- 0.02 * 94.3
+n1_esperado <- 20
+n2_esperado <- 10
+
+system.time({
+  potencia_ejemplo_2 <- potencia_eTest(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, cota_potencia = 1E-03)
+})
+potencia_ejemplo_2

@@ -601,7 +601,7 @@ body {
 <body>
 
 <h1 id="poisson-test">Poisson test</h1>
-<p>2020-05-20</p>
+<p>2020-05-21</p>
 <style>
  body {
    text-align: justify}
@@ -700,7 +700,14 @@ body {
 <p>Estimador de la varianza de la diferencia entre X1 y X2:</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">var_hat &lt;-<span class="st"> </span><span class="cf">function</span>(x1, x2, n1, n2) x1 <span class="op">/</span><span class="st"> </span>n1<span class="op">^</span><span class="dv">2</span> <span class="op">+</span><span class="st"> </span>x2 <span class="op">/</span><span class="st"> </span>n2<span class="op">^</span><span class="dv">2</span></a></code></pre></div>
 <p>Se usa la diferencia estandarizada como estadístico pivot, donde <em>d</em> es la diferencia pautada por la Hipótesis Nula (comunmente 0):</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1">T_x1_x2 &lt;-<span class="st"> </span><span class="cf">function</span>(x1, x2, n1, n2, d) (x1 <span class="op">/</span><span class="st"> </span>n1 <span class="op">-</span><span class="st"> </span>x2 <span class="op">/</span><span class="st"> </span>n2 <span class="op">-</span><span class="st"> </span>d) <span class="op">/</span><span class="st"> </span><span class="kw">sqrt</span>(<span class="kw">var_hat</span>(x1, x2, n1, n2))</a></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1">T_x1_x2 &lt;-<span class="st"> </span><span class="cf">function</span>(x1, x2, n1, n2, d) {</a>
+<a class="sourceLine" id="cb19-2" data-line-number="2">  <span class="cf">if</span> (x1 <span class="op">==</span><span class="st"> </span><span class="dv">0</span> <span class="op">&amp;&amp;</span><span class="st"> </span>x2 <span class="op">==</span><span class="st"> </span><span class="dv">0</span>) {</a>
+<a class="sourceLine" id="cb19-3" data-line-number="3">    <span class="cf">if</span> (d <span class="op">==</span><span class="st"> </span><span class="dv">0</span>) T &lt;-<span class="st"> </span><span class="dv">0</span> <span class="cf">else</span> T &lt;-<span class="st"> </span><span class="op">-</span><span class="ot">Inf</span></a>
+<a class="sourceLine" id="cb19-4" data-line-number="4">  } <span class="cf">else</span> {</a>
+<a class="sourceLine" id="cb19-5" data-line-number="5">    <span class="kw">return</span>((x1 <span class="op">/</span><span class="st"> </span>n1 <span class="op">-</span><span class="st"> </span>x2 <span class="op">/</span><span class="st"> </span>n2 <span class="op">-</span><span class="st"> </span>d) <span class="op">/</span><span class="st"> </span><span class="kw">sqrt</span>(<span class="kw">var_hat</span>(x1, x2, n1, n2)))</a>
+<a class="sourceLine" id="cb19-6" data-line-number="6">  }</a>
+<a class="sourceLine" id="cb19-7" data-line-number="7">  <span class="kw">return</span>(T)</a>
+<a class="sourceLine" id="cb19-8" data-line-number="8">}</a></code></pre></div>
 <p>Dadas las muestras (k1, k2, n1, n2) obtenidas, el valor observado para el estadístico T es:</p>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">T_k1_k2 &lt;-<span class="st"> </span><span class="kw">T_x1_x2</span>(k1, k2, n1, n2, d)</a></code></pre></div>
 <p>Bajo la hipótesis nula, lambda1 = lambda2 + d; lo que lleva al siguiente estimador de lambda2:</p>
@@ -711,7 +718,7 @@ body {
 <a class="sourceLine" id="cb22-3" data-line-number="3">  <span class="cf">break</span></a>
 <a class="sourceLine" id="cb22-4" data-line-number="4">}</a></code></pre></div>
 <p>Para una Poisson(lambda), la función de probabilidad puntual es:</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1">p_puntual_poisson &lt;-<span class="st"> </span><span class="cf">function</span>(x, lambda) <span class="kw">exp</span>(<span class="op">-</span>lambda) <span class="op">*</span><span class="st"> </span>lambda<span class="op">^</span>x <span class="op">/</span><span class="st"> </span><span class="kw">factorial</span>(x)</a></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1">p_puntual_poisson &lt;-<span class="st"> </span><span class="cf">function</span>(x, lambda) <span class="kw">dpois</span>(x, lambda) <span class="co">#exp(-lambda) * lambda^x / factorial(x)</span></a></code></pre></div>
 <p>Luego, para el vector (X1, X2) bajo la H0 y con lambda2 estimado por lambda2k_hat, la función de probabilidad puntual es:</p>
 <div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb24-1" data-line-number="1">p_puntual_x1_x2 &lt;-<span class="st"> </span><span class="cf">function</span>(x1, x2) <span class="kw">p_puntual_poisson</span>(x2, n2 <span class="op">*</span><span class="st"> </span>lambda2k_hat) <span class="op">*</span><span class="st"> </span><span class="kw">p_puntual_poisson</span>(x1, n1 <span class="op">*</span><span class="st"> </span>(lambda2k_hat <span class="op">+</span><span class="st"> </span>d)) </a></code></pre></div>
 <p>El p-valor de nuestro test es la posibilidad de haber observado un valor <code>T_x1_x2</code> tan o más extremo que <code>T_k1_k2</code> bajo la H0. Y esto puede ser calculado exactamente como la suma de las probabilidades puntuales <code>p_puntual_x1_x2</code> en los casos en que <code>T_k1_k2 &gt;= T_k1_k2</code>. El cálculo exacto del p-valor implicaría una suma infinita, dado que teóricamente x1 y x2 pueden tomar el valor de cualquier entero positivo. No obstante dado que lo único que nos interesa es saber si el p-valor está por debajo del nivel de significancia <em>alpha</em>, podemos dejar de sumar una vez que tengamos certeza sobre si esto será así; ya sea porque la suma del p-valor excedió <em>alpha</em>, o porque la suma sobre <code>T_k1_k2 &lt; T_k1_k2</code> excedió <em>1-alpha</em>.</p>
@@ -728,7 +735,7 @@ body {
 <a class="sourceLine" id="cb25-9" data-line-number="9"><span class="kw">sum</span>(probs)</a></code></pre></div>
 <pre><code>## [1] 1
 </code></pre>
-<p>Observemos que considerar estos valores de (x1, x2) barre con casi la totalidad de la probabilidad acumulable, dejando por fuera una cola de tan solo <code>4.1762072\times 10^{-10}</code>, lo cual sería relevante sólo en casos límite.</p>
+<p>Observemos que considerar estos valores de (x1, x2) barre con casi la totalidad de la probabilidad acumulable, dejando por fuera una cola de tan solo <code>4.1761383\times 10^{-10}</code>, lo cual sería relevante sólo en casos límite.</p>
 <div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" data-line-number="1">sumandos_consolidados <span class="op">%&gt;%</span><span class="st"> </span></a>
 <a class="sourceLine" id="cb27-2" data-line-number="2"><span class="st">  </span><span class="kw">ggplot</span>() <span class="op">+</span></a>
 <a class="sourceLine" id="cb27-3" data-line-number="3"><span class="st">  </span><span class="kw">geom_contour</span>(<span class="kw">aes</span>(x1, x2, <span class="dt">z =</span> probs, <span class="dt">colour =</span> ..level.., <span class="dt">linetype =</span> indicadora)) <span class="op">+</span></a>
@@ -842,67 +849,149 @@ body {
 ## 2:      FALSE 0.95001665
 </code></pre>
 <h4 id="implementacion-calculando-las-probabilidades-recursivamente-hasta-cierta-cota,-y-usando-la-malla-que-queda-definida">Implementación calculando las probabilidades recursivamente hasta cierta cota, y usando la malla que queda definida</h4>
-<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb35-1" data-line-number="1">param_poisson1 &lt;-<span class="st"> </span>n1 <span class="op">*</span><span class="st"> </span>(lambda2k_hat <span class="op">+</span><span class="st"> </span>d)</a>
-<a class="sourceLine" id="cb35-2" data-line-number="2">param_poisson2 &lt;-<span class="st"> </span>n2 <span class="op">*</span><span class="st"> </span>lambda2k_hat</a>
-<a class="sourceLine" id="cb35-3" data-line-number="3"></a>
-<a class="sourceLine" id="cb35-4" data-line-number="4">moda1 &lt;-<span class="st"> </span><span class="kw">floor</span>(param_poisson1)</a>
-<a class="sourceLine" id="cb35-5" data-line-number="5">moda2 &lt;-<span class="st"> </span><span class="kw">floor</span>(param_poisson2)</a>
-<a class="sourceLine" id="cb35-6" data-line-number="6"></a>
-<a class="sourceLine" id="cb35-7" data-line-number="7">c_probs_poisson_desde_moda &lt;-<span class="st"> </span><span class="cf">function</span>(moda, param_poisson, <span class="dt">cota =</span> <span class="fl">1E-07</span>) {</a>
-<a class="sourceLine" id="cb35-8" data-line-number="8">  p_moda &lt;-<span class="st"> </span><span class="kw">p_puntual_poisson</span>(moda, param_poisson)</a>
-<a class="sourceLine" id="cb35-9" data-line-number="9">  </a>
-<a class="sourceLine" id="cb35-10" data-line-number="10">  p_vec &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">1000</span>))</a>
-<a class="sourceLine" id="cb35-11" data-line-number="11">  indice &lt;-<span class="st"> </span><span class="dv">0</span></a>
-<a class="sourceLine" id="cb35-12" data-line-number="12">  k &lt;-<span class="st"> </span>moda</a>
-<a class="sourceLine" id="cb35-13" data-line-number="13">  p_k &lt;-<span class="st"> </span>p_moda</a>
-<a class="sourceLine" id="cb35-14" data-line-number="14">  <span class="cf">while</span> (p_k <span class="op">&gt;</span><span class="st"> </span>cota) {</a>
-<a class="sourceLine" id="cb35-15" data-line-number="15">    k &lt;-<span class="st"> </span>k <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
-<a class="sourceLine" id="cb35-16" data-line-number="16">    p_k &lt;-<span class="st"> </span>param_poisson <span class="op">/</span><span class="st"> </span>k <span class="op">*</span><span class="st"> </span>p_k</a>
-<a class="sourceLine" id="cb35-17" data-line-number="17">    indice &lt;-<span class="st"> </span>indice <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
-<a class="sourceLine" id="cb35-18" data-line-number="18">    p_vec[indice] &lt;-<span class="st"> </span>p_k</a>
-<a class="sourceLine" id="cb35-19" data-line-number="19">  }</a>
-<a class="sourceLine" id="cb35-20" data-line-number="20">  x_vec_up &lt;-<span class="st"> </span><span class="kw">seq</span>(moda <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, moda <span class="op">+</span><span class="st"> </span>indice)</a>
-<a class="sourceLine" id="cb35-21" data-line-number="21">  p_vec_up &lt;-<span class="st"> </span>p_vec[<span class="dv">1</span><span class="op">:</span>indice]</a>
-<a class="sourceLine" id="cb35-22" data-line-number="22">  </a>
-<a class="sourceLine" id="cb35-23" data-line-number="23">  p_vec &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">1000</span>))</a>
-<a class="sourceLine" id="cb35-24" data-line-number="24">  indice &lt;-<span class="st"> </span><span class="dv">0</span></a>
-<a class="sourceLine" id="cb35-25" data-line-number="25">  k &lt;-<span class="st"> </span>moda</a>
-<a class="sourceLine" id="cb35-26" data-line-number="26">  p_k &lt;-<span class="st"> </span>p_moda</a>
-<a class="sourceLine" id="cb35-27" data-line-number="27">  <span class="cf">while</span> (p_k <span class="op">&gt;</span><span class="st"> </span>cota <span class="op">&amp;</span><span class="st"> </span>k <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>) {</a>
-<a class="sourceLine" id="cb35-28" data-line-number="28">    p_k &lt;-<span class="st"> </span>k <span class="op">/</span><span class="st"> </span>param_poisson <span class="op">*</span><span class="st"> </span>p_k</a>
-<a class="sourceLine" id="cb35-29" data-line-number="29">    k &lt;-<span class="st"> </span>k <span class="op">-</span><span class="st"> </span><span class="dv">1</span></a>
-<a class="sourceLine" id="cb35-30" data-line-number="30">    indice &lt;-<span class="st"> </span>indice <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
-<a class="sourceLine" id="cb35-31" data-line-number="31">    p_vec[indice] &lt;-<span class="st"> </span>p_k</a>
-<a class="sourceLine" id="cb35-32" data-line-number="32">  }</a>
-<a class="sourceLine" id="cb35-33" data-line-number="33">  x_vec_down &lt;-<span class="st"> </span><span class="kw">seq</span>(moda <span class="op">-</span><span class="st"> </span><span class="dv">1</span>, moda <span class="op">-</span><span class="st"> </span>indice)</a>
-<a class="sourceLine" id="cb35-34" data-line-number="34">  p_vec_down &lt;-<span class="st"> </span>p_vec[<span class="dv">1</span><span class="op">:</span>indice]</a>
-<a class="sourceLine" id="cb35-35" data-line-number="35">  </a>
-<a class="sourceLine" id="cb35-36" data-line-number="36">  tabla_probs &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">x =</span> <span class="kw">c</span>(x_vec_down, x_vec_up, moda),</a>
-<a class="sourceLine" id="cb35-37" data-line-number="37">                            <span class="dt">p =</span> <span class="kw">c</span>(p_vec_down, p_vec_up, p_moda)) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-38" data-line-number="38"><span class="st">    </span><span class="kw">setkey</span>(x)</a>
-<a class="sourceLine" id="cb35-39" data-line-number="39">}</a>
-<a class="sourceLine" id="cb35-40" data-line-number="40"></a>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb35-1" data-line-number="1">c_probs_poisson_desde_moda &lt;-<span class="st"> </span><span class="cf">function</span>(param_poisson, <span class="dt">cota =</span> <span class="fl">1E-07</span>) {</a>
+<a class="sourceLine" id="cb35-2" data-line-number="2">  moda &lt;-<span class="st"> </span><span class="kw">floor</span>(param_poisson)</a>
+<a class="sourceLine" id="cb35-3" data-line-number="3">  p_moda &lt;-<span class="st"> </span><span class="kw">p_puntual_poisson</span>(moda, param_poisson)</a>
+<a class="sourceLine" id="cb35-4" data-line-number="4">  </a>
+<a class="sourceLine" id="cb35-5" data-line-number="5">  p_vec &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">1000</span>))</a>
+<a class="sourceLine" id="cb35-6" data-line-number="6">  indice &lt;-<span class="st"> </span><span class="dv">0</span></a>
+<a class="sourceLine" id="cb35-7" data-line-number="7">  k &lt;-<span class="st"> </span>moda</a>
+<a class="sourceLine" id="cb35-8" data-line-number="8">  p_k &lt;-<span class="st"> </span>p_moda</a>
+<a class="sourceLine" id="cb35-9" data-line-number="9">  <span class="cf">while</span> (p_k <span class="op">&gt;</span><span class="st"> </span>cota) {</a>
+<a class="sourceLine" id="cb35-10" data-line-number="10">    k &lt;-<span class="st"> </span>k <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
+<a class="sourceLine" id="cb35-11" data-line-number="11">    p_k &lt;-<span class="st"> </span>param_poisson <span class="op">/</span><span class="st"> </span>k <span class="op">*</span><span class="st"> </span>p_k</a>
+<a class="sourceLine" id="cb35-12" data-line-number="12">    indice &lt;-<span class="st"> </span>indice <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
+<a class="sourceLine" id="cb35-13" data-line-number="13">    p_vec[indice] &lt;-<span class="st"> </span>p_k</a>
+<a class="sourceLine" id="cb35-14" data-line-number="14">  }</a>
+<a class="sourceLine" id="cb35-15" data-line-number="15">  x_vec_up &lt;-<span class="st"> </span><span class="kw">seq</span>(moda <span class="op">+</span><span class="st"> </span><span class="dv">1</span>, moda <span class="op">+</span><span class="st"> </span>indice)</a>
+<a class="sourceLine" id="cb35-16" data-line-number="16">  p_vec_up &lt;-<span class="st"> </span>p_vec[<span class="dv">1</span><span class="op">:</span>indice]</a>
+<a class="sourceLine" id="cb35-17" data-line-number="17">  </a>
+<a class="sourceLine" id="cb35-18" data-line-number="18">  p_vec &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">1000</span>))</a>
+<a class="sourceLine" id="cb35-19" data-line-number="19">  indice &lt;-<span class="st"> </span><span class="dv">0</span></a>
+<a class="sourceLine" id="cb35-20" data-line-number="20">  k &lt;-<span class="st"> </span>moda</a>
+<a class="sourceLine" id="cb35-21" data-line-number="21">  p_k &lt;-<span class="st"> </span>p_moda</a>
+<a class="sourceLine" id="cb35-22" data-line-number="22">  <span class="cf">while</span> (p_k <span class="op">&gt;</span><span class="st"> </span>cota <span class="op">&amp;</span><span class="st"> </span>k <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>) {</a>
+<a class="sourceLine" id="cb35-23" data-line-number="23">    p_k &lt;-<span class="st"> </span>k <span class="op">/</span><span class="st"> </span>param_poisson <span class="op">*</span><span class="st"> </span>p_k</a>
+<a class="sourceLine" id="cb35-24" data-line-number="24">    k &lt;-<span class="st"> </span>k <span class="op">-</span><span class="st"> </span><span class="dv">1</span></a>
+<a class="sourceLine" id="cb35-25" data-line-number="25">    indice &lt;-<span class="st"> </span>indice <span class="op">+</span><span class="st"> </span><span class="dv">1</span></a>
+<a class="sourceLine" id="cb35-26" data-line-number="26">    p_vec[indice] &lt;-<span class="st"> </span>p_k</a>
+<a class="sourceLine" id="cb35-27" data-line-number="27">  }</a>
+<a class="sourceLine" id="cb35-28" data-line-number="28">  x_vec_down &lt;-<span class="st"> </span><span class="kw">seq</span>(moda <span class="op">-</span><span class="st"> </span><span class="dv">1</span>, moda <span class="op">-</span><span class="st"> </span>indice)</a>
+<a class="sourceLine" id="cb35-29" data-line-number="29">  p_vec_down &lt;-<span class="st"> </span>p_vec[<span class="dv">1</span><span class="op">:</span>indice]</a>
+<a class="sourceLine" id="cb35-30" data-line-number="30">  </a>
+<a class="sourceLine" id="cb35-31" data-line-number="31">  tabla_probs &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="dt">x =</span> <span class="kw">c</span>(x_vec_down, x_vec_up, moda),</a>
+<a class="sourceLine" id="cb35-32" data-line-number="32">                            <span class="dt">p =</span> <span class="kw">c</span>(p_vec_down, p_vec_up, p_moda)) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-33" data-line-number="33"><span class="st">    </span><span class="kw">setkey</span>(x)</a>
+<a class="sourceLine" id="cb35-34" data-line-number="34">}</a>
+<a class="sourceLine" id="cb35-35" data-line-number="35"></a>
+<a class="sourceLine" id="cb35-36" data-line-number="36">cross_join_dt &lt;-<span class="st"> </span><span class="cf">function</span>(DT1,DT2) {</a>
+<a class="sourceLine" id="cb35-37" data-line-number="37">  <span class="kw">setkey</span>(DT1[,<span class="kw">c</span>(<span class="dt">llave_temporal_unica =</span> <span class="dv">1</span>,.SD)],llave_temporal_unica) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-38" data-line-number="38"><span class="st">    </span>.[<span class="kw">setkey</span>(DT2[,<span class="kw">c</span>(<span class="dt">llave_temporal_unica=</span><span class="dv">1</span>,.SD)], llave_temporal_unica),allow.cartesian=<span class="ot">TRUE</span>] <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-39" data-line-number="39"><span class="st">    </span>.[,llave_temporal_unica<span class="op">:</span><span class="er">=</span><span class="ot">NULL</span>]</a>
+<a class="sourceLine" id="cb35-40" data-line-number="40">}</a>
 <a class="sourceLine" id="cb35-41" data-line-number="41"></a>
-<a class="sourceLine" id="cb35-42" data-line-number="42">cota &lt;-<span class="st"> </span><span class="fl">1E-07</span></a>
-<a class="sourceLine" id="cb35-43" data-line-number="43">tabla_probs1 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(moda1, param_poisson1, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'x1'</span>, <span class="st">'p1'</span>))</a>
-<a class="sourceLine" id="cb35-44" data-line-number="44">tabla_probs2 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(moda2, param_poisson2, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'x2'</span>, <span class="st">'p2'</span>))</a>
-<a class="sourceLine" id="cb35-45" data-line-number="45"></a>
-<a class="sourceLine" id="cb35-46" data-line-number="46">cross_join_dt &lt;-<span class="st"> </span><span class="cf">function</span>(DT1,DT2) {</a>
-<a class="sourceLine" id="cb35-47" data-line-number="47">  <span class="kw">setkey</span>(DT1[,<span class="kw">c</span>(<span class="dt">llave_temporal_unica =</span> <span class="dv">1</span>,.SD)],llave_temporal_unica) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-48" data-line-number="48"><span class="st">    </span>.[<span class="kw">setkey</span>(DT2[,<span class="kw">c</span>(<span class="dt">llave_temporal_unica=</span><span class="dv">1</span>,.SD)], llave_temporal_unica),allow.cartesian=<span class="ot">TRUE</span>] <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-49" data-line-number="49"><span class="st">    </span>.[,llave_temporal_unica<span class="op">:</span><span class="er">=</span><span class="ot">NULL</span>]</a>
-<a class="sourceLine" id="cb35-50" data-line-number="50">}</a>
-<a class="sourceLine" id="cb35-51" data-line-number="51"></a>
-<a class="sourceLine" id="cb35-52" data-line-number="52">dt_terms_sumatoria &lt;-<span class="st"> </span><span class="kw">cross_join_dt</span>(tabla_probs1, tabla_probs2) <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-53" data-line-number="53"><span class="st">  </span>.[, p <span class="op">:</span><span class="er">=</span><span class="st"> </span>p1 <span class="op">*</span><span class="st"> </span>p2] <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-54" data-line-number="54"><span class="st">  </span><span class="co">#.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %&gt;% </span></a>
-<a class="sourceLine" id="cb35-55" data-line-number="55"><span class="st">  </span>.[, estadisticoT <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="kw">map2_dbl</span>(x1, x2, <span class="cf">function</span>(x1, x2) <span class="kw">T_x1_x2</span>(x1, x2, n1, n2, d))] <span class="op">%&gt;%</span><span class="st"> </span></a>
-<a class="sourceLine" id="cb35-56" data-line-number="56"><span class="st">  </span>.[, indicadora <span class="op">:</span><span class="er">=</span><span class="st"> </span>estadisticoT <span class="op">&gt;=</span><span class="st"> </span>T_k1_k2]</a>
-<a class="sourceLine" id="cb35-57" data-line-number="57">cdf &lt;-<span class="st"> </span>dt_terms_sumatoria[, .(<span class="dt">p_acum =</span> <span class="kw">sum</span>(p)), indicadora]</a>
-<a class="sourceLine" id="cb35-58" data-line-number="58">cdf</a></code></pre></div>
-<pre><code>##    indicadora     p_acum
-## 1:      FALSE 0.95722822
-## 2:       TRUE 0.04277149
+<a class="sourceLine" id="cb35-42" data-line-number="42">etest_con_cota &lt;-<span class="st"> </span><span class="cf">function</span>(k1, k2, n1, n2, d, <span class="dt">alpha =</span> <span class="fl">0.05</span>, <span class="dt">cota =</span> <span class="fl">1E-07</span>) {</a>
+<a class="sourceLine" id="cb35-43" data-line-number="43">  lambda2k_hat &lt;-<span class="st"> </span>(k1 <span class="op">+</span><span class="st"> </span>k2) <span class="op">/</span><span class="st"> </span>(n1 <span class="op">+</span><span class="st"> </span>n2) <span class="op">-</span><span class="st"> </span>d <span class="op">*</span><span class="st"> </span>n1 <span class="op">/</span><span class="st"> </span>(n1 <span class="op">+</span><span class="st"> </span>n2)</a>
+<a class="sourceLine" id="cb35-44" data-line-number="44">  <span class="cf">if</span> (lambda2k_hat <span class="op">&lt;=</span><span class="st"> </span><span class="dv">0</span>) <span class="kw">return</span>(<span class="kw">list</span>(<span class="dt">cdf =</span> <span class="kw">data.table</span>(<span class="dt">indicadora =</span> <span class="ot">FALSE</span>, <span class="dt">p_acum =</span> <span class="dv">1</span>), <span class="dt">rejectH0 =</span> <span class="ot">FALSE</span>))</a>
+<a class="sourceLine" id="cb35-45" data-line-number="45">  param_poisson1 &lt;-<span class="st"> </span>n1 <span class="op">*</span><span class="st"> </span>(lambda2k_hat <span class="op">+</span><span class="st"> </span>d)</a>
+<a class="sourceLine" id="cb35-46" data-line-number="46">  param_poisson2 &lt;-<span class="st"> </span>n2 <span class="op">*</span><span class="st"> </span>lambda2k_hat</a>
+<a class="sourceLine" id="cb35-47" data-line-number="47">  T_k1_k2 &lt;-<span class="st"> </span><span class="kw">T_x1_x2</span>(k1, k2, n1, n2, d)</a>
+<a class="sourceLine" id="cb35-48" data-line-number="48">  </a>
+<a class="sourceLine" id="cb35-49" data-line-number="49">  tabla_probs1 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(param_poisson1, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'x1'</span>, <span class="st">'p1'</span>))</a>
+<a class="sourceLine" id="cb35-50" data-line-number="50">  tabla_probs2 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(param_poisson2, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'x2'</span>, <span class="st">'p2'</span>))</a>
+<a class="sourceLine" id="cb35-51" data-line-number="51">  </a>
+<a class="sourceLine" id="cb35-52" data-line-number="52">  dt_terms_sumatoria &lt;-<span class="st"> </span><span class="kw">cross_join_dt</span>(tabla_probs1, tabla_probs2) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-53" data-line-number="53"><span class="st">    </span>.[, p <span class="op">:</span><span class="er">=</span><span class="st"> </span>p1 <span class="op">*</span><span class="st"> </span>p2] <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-54" data-line-number="54"><span class="st">    </span><span class="co">#.[, p := map2_dbl(x1, x2, function(x1, x2) p_puntual_x1_x2(x1, x2))] %&gt;% </span></a>
+<a class="sourceLine" id="cb35-55" data-line-number="55"><span class="st">    </span>.[, estadisticoT <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="kw">map2_dbl</span>(x1, x2, <span class="cf">function</span>(x1, x2) <span class="kw">T_x1_x2</span>(x1, x2, n1, n2, d))] <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb35-56" data-line-number="56"><span class="st">    </span>.[, indicadora <span class="op">:</span><span class="er">=</span><span class="st"> </span>estadisticoT <span class="op">&gt;=</span><span class="st"> </span>T_k1_k2]</a>
+<a class="sourceLine" id="cb35-57" data-line-number="57">  cdf &lt;-<span class="st"> </span>dt_terms_sumatoria[, .(<span class="dt">p_acum =</span> <span class="kw">sum</span>(p)), indicadora]</a>
+<a class="sourceLine" id="cb35-58" data-line-number="58">  <span class="cf">if</span>(cdf[indicadora <span class="op">==</span><span class="st"> </span><span class="ot">FALSE</span>, p_acum] <span class="op">&gt;</span><span class="st"> </span>(<span class="dv">1</span> <span class="op">-</span><span class="st"> </span>alpha)) {</a>
+<a class="sourceLine" id="cb35-59" data-line-number="59">    rejectH0 &lt;-<span class="st"> </span><span class="ot">TRUE</span></a>
+<a class="sourceLine" id="cb35-60" data-line-number="60">  } <span class="cf">else</span> <span class="cf">if</span> (cdf[indicadora <span class="op">==</span><span class="st"> </span><span class="ot">TRUE</span>, p_acum] <span class="op">&gt;</span><span class="st"> </span>alpha) {</a>
+<a class="sourceLine" id="cb35-61" data-line-number="61">    rejectH0 &lt;-<span class="st"> </span><span class="ot">FALSE</span></a>
+<a class="sourceLine" id="cb35-62" data-line-number="62">  } <span class="cf">else</span> {</a>
+<a class="sourceLine" id="cb35-63" data-line-number="63">    <span class="co">#stop(&quot;No se pudo determinar si la H0 se debe rechazar o no. Disminuir la cota e intentar de nuevo&quot;)</span></a>
+<a class="sourceLine" id="cb35-64" data-line-number="64">    <span class="co">#Si la cota no es suficiente, la bajo y pruebo de nuevo:</span></a>
+<a class="sourceLine" id="cb35-65" data-line-number="65">    <span class="kw">return</span>(<span class="kw">etest_con_cota</span>(k1, k2, n1, n2, d, <span class="dt">cota =</span> cota <span class="op">/</span><span class="st"> </span><span class="dv">10</span>))</a>
+<a class="sourceLine" id="cb35-66" data-line-number="66">  }</a>
+<a class="sourceLine" id="cb35-67" data-line-number="67">  </a>
+<a class="sourceLine" id="cb35-68" data-line-number="68">  <span class="kw">list</span>(<span class="dt">rejectH0 =</span> rejectH0, <span class="dt">cdf =</span> cdf, <span class="dt">pvalue =</span> cdf[indicadora <span class="op">==</span><span class="st"> </span><span class="ot">TRUE</span>, p_acum], <span class="dt">probNoAsignada =</span> <span class="dv">1</span> <span class="op">-</span><span class="st"> </span>cdf[, <span class="kw">sum</span>(p_acum)])</a>
+<a class="sourceLine" id="cb35-69" data-line-number="69">}</a></code></pre></div>
+<p>Resultado:</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb36-1" data-line-number="1"><span class="kw">etest_con_cota</span>(k1, k2, n1, n2, d, <span class="dt">cota =</span> <span class="fl">1E-04</span>)</a></code></pre></div>
+<pre><code>## $rejectH0
+## [1] TRUE
+## 
+## $cdf
+##    indicadora    p_acum
+## 1:      FALSE 0.9569717
+## 2:       TRUE 0.0425339
+## 
+## $pvalue
+## [1] 0.0425339
+## 
+## $probNoAsignada
+## [1] 0.0004943826
+</code></pre>
+<p>Resultado del E-test para el Ejemplo 1 del paper:</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb38-1" data-line-number="1">etest_ejemplo_<span class="dv">1</span> &lt;-<span class="st"> </span><span class="kw">etest_con_cota</span>(<span class="dt">k1 =</span> <span class="dv">3</span>, <span class="dt">k2 =</span> <span class="dv">0</span>, <span class="dt">n1 =</span> <span class="dv">1</span>, <span class="dt">n2 =</span> <span class="dv">1</span>, <span class="dt">d =</span> <span class="dv">0</span>, <span class="dt">cota =</span> <span class="fl">1E-04</span>)</a>
+<a class="sourceLine" id="cb38-2" data-line-number="2">etest_ejemplo_<span class="dv">1</span></a></code></pre></div>
+<pre><code>## $rejectH0
+## [1] TRUE
+## 
+## $cdf
+##    indicadora     p_acum
+## 1:      FALSE 0.95580615
+## 2:       TRUE 0.04418565
+## 
+## $pvalue
+## [1] 0.04418565
+## 
+## $probNoAsignada
+## [1] 8.194985e-06
+</code></pre>
+<p>Dado que en el paper se deseaba un test a dos colas, el p-valor sería el doble que el anterior, es decir <code>0.0883713</code>.</p>
+<h4 id="calculo-de-potencia-del-e-test">Cálculo de potencia del E-test</h4>
+<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb40-1" data-line-number="1">potencia_eTest &lt;-<span class="st"> </span><span class="cf">function</span>(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, </a>
+<a class="sourceLine" id="cb40-2" data-line-number="2">                            <span class="dt">alpha =</span> <span class="fl">0.05</span>, <span class="dt">cota_potencia =</span> <span class="fl">1E-03</span>, <span class="dt">cota_test =</span> <span class="fl">1E-04</span>) {</a>
+<a class="sourceLine" id="cb40-3" data-line-number="3">  param_poisson1 &lt;-<span class="st"> </span>lambda1_esperado <span class="op">*</span><span class="st"> </span>n1_esperado</a>
+<a class="sourceLine" id="cb40-4" data-line-number="4">  param_poisson2 &lt;-<span class="st"> </span>lambda2_esperado <span class="op">*</span><span class="st"> </span>n2_esperado</a>
+<a class="sourceLine" id="cb40-5" data-line-number="5">  </a>
+<a class="sourceLine" id="cb40-6" data-line-number="6">  tabla_probs1 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(param_poisson1, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'k1'</span>, <span class="st">'pk1'</span>))</a>
+<a class="sourceLine" id="cb40-7" data-line-number="7">  tabla_probs2 &lt;-<span class="st"> </span><span class="kw">c_probs_poisson_desde_moda</span>(param_poisson2, cota) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">setnames</span>(<span class="kw">c</span>(<span class="st">'k2'</span>, <span class="st">'pk2'</span>))</a>
+<a class="sourceLine" id="cb40-8" data-line-number="8">  </a>
+<a class="sourceLine" id="cb40-9" data-line-number="9">  indicadora_para_potencia &lt;-<span class="st"> </span><span class="cf">function</span>(k1, k2) <span class="kw">etest_con_cota</span>(k1, k2, n1_esperado, n2_esperado, d, alpha, cota_test)<span class="op">$</span>rejectH0</a>
+<a class="sourceLine" id="cb40-10" data-line-number="10">  dt_terms_sumatoria &lt;-<span class="st"> </span><span class="kw">cross_join_dt</span>(tabla_probs1, tabla_probs2) <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb40-11" data-line-number="11"><span class="st">    </span>.[(k2 <span class="op">&lt;</span><span class="st"> </span>n2 <span class="op">*</span><span class="st"> </span>k1 <span class="op">/</span><span class="st"> </span>n1 <span class="op">-</span><span class="st"> </span>n2 <span class="op">*</span><span class="st"> </span>d) <span class="op">&amp;</span><span class="st"> </span>(k1 <span class="op">&gt;</span><span class="st"> </span>n1 <span class="op">*</span><span class="st"> </span>d)] <span class="op">%&gt;%</span><span class="st"> </span><span class="co">#Para estos ya sé que lambda2 &lt; 0</span></a>
+<a class="sourceLine" id="cb40-12" data-line-number="12"><span class="st">    </span>.[, p <span class="op">:</span><span class="er">=</span><span class="st"> </span>pk1 <span class="op">*</span><span class="st"> </span>pk2] <span class="op">%&gt;%</span><span class="st"> </span></a>
+<a class="sourceLine" id="cb40-13" data-line-number="13"><span class="st">    </span>.[, indicadora <span class="op">:</span><span class="er">=</span><span class="st"> </span><span class="kw">map2_lgl</span>(k1, k2, indicadora_para_potencia)]</a>
+<a class="sourceLine" id="cb40-14" data-line-number="14">  cdf &lt;-<span class="st"> </span>dt_terms_sumatoria[, .(<span class="dt">power =</span> <span class="kw">sum</span>(p)), indicadora]</a>
+<a class="sourceLine" id="cb40-15" data-line-number="15">  <span class="kw">list</span>(<span class="dt">power =</span> cdf[indicadora <span class="op">==</span><span class="st"> </span><span class="ot">TRUE</span>, power], <span class="dt">probNoAsignada =</span> <span class="dv">1</span> <span class="op">-</span><span class="st"> </span>cdf[, <span class="kw">sum</span>(power)], <span class="dt">cdf =</span> cdf)</a>
+<a class="sourceLine" id="cb40-16" data-line-number="16">}</a></code></pre></div>
+<p>Cálculo de la potencia para el ejemplo 2 del paper:</p>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb41-1" data-line-number="1">lambda1_esperado &lt;-<span class="st"> </span><span class="fl">0.04</span> <span class="op">*</span><span class="st"> </span><span class="fl">94.3</span></a>
+<a class="sourceLine" id="cb41-2" data-line-number="2">lambda2_esperado &lt;-<span class="st"> </span><span class="fl">0.02</span> <span class="op">*</span><span class="st"> </span><span class="fl">94.3</span></a>
+<a class="sourceLine" id="cb41-3" data-line-number="3">n1_esperado &lt;-<span class="st"> </span><span class="dv">20</span></a>
+<a class="sourceLine" id="cb41-4" data-line-number="4">n2_esperado &lt;-<span class="st"> </span><span class="dv">10</span></a>
+<a class="sourceLine" id="cb41-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb41-6" data-line-number="6"><span class="kw">system.time</span>({</a>
+<a class="sourceLine" id="cb41-7" data-line-number="7">  potencia_ejemplo_<span class="dv">2</span> &lt;-<span class="st"> </span><span class="kw">potencia_eTest</span>(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, <span class="dt">cota_potencia =</span> <span class="fl">1E-03</span>)</a>
+<a class="sourceLine" id="cb41-8" data-line-number="8">})</a></code></pre></div>
+<pre><code>##    user  system elapsed 
+##  72.110   0.046  36.953
+</code></pre>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb43-1" data-line-number="1">potencia_ejemplo_<span class="dv">2</span></a></code></pre></div>
+<pre><code>## $power
+## [1] 0.899823
+## 
+## $probNoAsignada
+## [1] 0.0003510663
+## 
+## $cdf
+##    indicadora      power
+## 1:       TRUE 0.89982300
+## 2:      FALSE 0.09982593
 </code></pre>
 
 </body>
