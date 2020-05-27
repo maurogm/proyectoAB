@@ -1,6 +1,6 @@
 Poisson test
 ================
-2020-05-21
+2020-05-27
 
 <style>
  body {
@@ -272,7 +272,17 @@ sum(probs)
 Observemos que considerar estos valores de (x1, x2) barre con casi la
 totalidad de la probabilidad acumulable, dejando por fuera una cola de
 tan solo `4.1761383\times 10^{-10}`, lo cual sería relevante sólo en
-casos límite.
+casos
+límite.
+
+``` r
+sumandos_consolidados <- data.table(grid_x1_x2, probs, estadisticoT, indicadora)
+sumandos_consolidados[, .(suma_probabilidades = sum(probs)), indicadora]
+```
+
+    ##    indicadora suma_probabilidades
+    ## 1:      FALSE          0.95722837
+    ## 2:       TRUE          0.04277163
 
 ``` r
 sumandos_consolidados %>% 
@@ -283,16 +293,6 @@ sumandos_consolidados %>%
 ```
 
 ![](poisson_tests_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
-
-``` r
-sumandos_consolidados <- data.table(grid_x1_x2, probs, estadisticoT, indicadora)
-
-sumandos_consolidados[, .(suma_probabilidades = sum(probs)), indicadora]
-```
-
-    ##    indicadora suma_probabilidades
-    ## 1:      FALSE          0.95722837
-    ## 2:       TRUE          0.04277163
 
 En este ejemplo, observamos que la suma de las probabilidades puntuales
 supera el umbral de 0.95. Por lo tanto, podemos estar seguros de que el
@@ -550,8 +550,8 @@ potencia_eTest <- function(lambda1_esperado, lambda2_esperado, n1_esperado, n2_e
   param_poisson1 <- lambda1_esperado * n1_esperado
   param_poisson2 <- lambda2_esperado * n2_esperado
   
-  tabla_probs1 <- c_probs_poisson_desde_moda(param_poisson1, cota) %>% setnames(c('k1', 'pk1'))
-  tabla_probs2 <- c_probs_poisson_desde_moda(param_poisson2, cota) %>% setnames(c('k2', 'pk2'))
+  tabla_probs1 <- c_probs_poisson_desde_moda(param_poisson1, cota_potencia) %>% setnames(c('k1', 'pk1'))
+  tabla_probs2 <- c_probs_poisson_desde_moda(param_poisson2, cota_potencia) %>% setnames(c('k2', 'pk2'))
   
   indicadora_para_potencia <- function(k1, k2) etest_con_cota(k1, k2, n1_esperado, n2_esperado, d, alpha, cota_test)$rejectH0
   dt_terms_sumatoria <- cross_join_dt(tabla_probs1, tabla_probs2) %>% 
@@ -577,19 +577,125 @@ system.time({
 ```
 
     ##    user  system elapsed 
-    ##  72.110   0.046  36.953
+    ##  47.060   0.056  23.882
 
 ``` r
 potencia_ejemplo_2
 ```
 
     ## $power
-    ## [1] 0.899823
+    ## [1] 0.8973333
     ## 
     ## $probNoAsignada
-    ## [1] 0.0003510663
+    ## [1] 0.00514515
     ## 
     ## $cdf
     ##    indicadora      power
-    ## 1:       TRUE 0.89982300
-    ## 2:      FALSE 0.09982593
+    ## 1:       TRUE 0.89733329
+    ## 2:      FALSE 0.09752156
+
+### Implementación final
+
+``` r
+sumPoissonMassOverSupport <- function(param_poisson1, param_poisson2, f_indicadora, cota_precision, inicio_acelerado = FALSE) {
+  x_actual <- 0
+  px_actual <- dpois(x_actual, param_poisson1)
+  px_acum <- px_actual
+  y_max <- -1 # para que el primer y_max+1 sea igual a 0 
+  py_acum <- 0
+  
+  if (inicio_acelerado) {
+    x_actual <- qpois(cota_precision / 2, param_poisson1) # dejo atrás los x chicos que acumulan demasiado poca probabilidad 
+    px_acum <- ppois(x_actual, param_poisson1) # Tomo nota de cuánta probabilidad dejé atrás realmente
+    px_actual <- dpois(x_actual, param_poisson1)
+    y_max <- qpois(cota_precision / 2, param_poisson2) - 1 # dejo atrás los x chicos que acumulan demasiado poca probabilidad, restando 1 para llevar el mínimo a -1
+    py_acum <- ppois(y_max, param_poisson2) # Tomo nota de cuánta probabilidad dejé atrás realmente
+    py_actual <- dpois(y_max, param_poisson2)
+  }
+  
+  prob_conjunta_acumulada <- 0;
+  while (px_acum < 1 - cota_precision / 2) {
+    x_actual <- x_actual + 1
+    while (f_indicadora(x_actual, y_max + 1) == TRUE) {
+      y_max <- y_max + 1
+      if (y_max == 0) py_actual <- dpois(0, param_poisson2) else py_actual <- py_actual * param_poisson2 / y_max
+      #py_actual <- dpois(y_max, param_poisson2)
+      py_acum <- py_acum + py_actual
+    }
+    px_actual <- px_actual * param_poisson1 / x_actual
+    #px_actual <- dpois(x_actual, param_poisson1)
+    px_acum <- px_acum + px_actual
+    prob_conjunta_acumulada <- prob_conjunta_acumulada + px_actual * py_acum
+  }
+  prob_conjunta_acumulada
+}
+
+var_hat <- function(x1, x2, n1, n2) x1 / n1^2 + x2 / n2^2
+T_x1_x2 <- function(x1, x2, n1, n2, d) {
+  if (x1 == 0 && x2 == 0) {
+    if (d == 0) T <- 0 else T <- -Inf
+  } else {
+    return((x1 / n1 - x2 / n2 - d) / sqrt(var_hat(x1, x2, n1, n2)))
+  }
+  return(T)
+}
+eTest_veloz <- function(k1, k2, n1, n2, d, alpha = 0.05, cota_test = 1E-04, inicio_acelerado = FALSE) {
+  lambda2k_hat <- (k1 + k2) / (n1 + n2) - d * n1 / (n1 + n2)
+  if (lambda2k_hat <= 0) return(list(pvalue = 1, rejectH0 = FALSE))
+  T_k1_k2 <- T_x1_x2(k1, k2, n1, n2, d)
+  indicadora_para_test <- function(x1, x2) T_x1_x2(x1, x2, n1, n2, d) >= T_k1_k2
+  
+  param_poisson1 <- n1 * (lambda2k_hat + d)
+  param_poisson2 <- n2 * lambda2k_hat
+  
+  pvalue <- sumPoissonMassOverSupport(param_poisson1, param_poisson2, indicadora_para_test, cota_test, inicio_acelerado)
+  list(pvalue = pvalue, rejectH0 = pvalue < alpha)
+}
+
+potencia_eTest_veloz <- function(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, d = 0,
+                                 alpha = 0.05, cota_potencia = 1E-03, cota_test = 1E-04, inicio_acelerado = FALSE) {
+  param_poisson1 <- lambda1_esperado * n1_esperado
+  param_poisson2 <- lambda2_esperado * n2_esperado
+  indicadora_para_potencia <- function(k1, k2) eTest_veloz(k1, k2, n1_esperado, n2_esperado, d, alpha, cota_test, inicio_acelerado)$rejectH0
+  
+  sumPoissonMassOverSupport(param_poisson1, param_poisson2, indicadora_para_potencia, cota_potencia, inicio_acelerado)
+}
+```
+
+Comparación entre las dos implementaciones del
+test:
+
+``` r
+microbenchmark::microbenchmark(etest_con_cota(k1, k2, n1, n2, d, cota = 1E-10),
+                               eTest_veloz(k1, k2, n1, n2, d, cota_test = 1E-10),
+                               times = 100)
+```
+
+    ## Unit: microseconds
+    ##                                               expr       min         lq       mean     median         uq       max neval cld
+    ##    etest_con_cota(k1, k2, n1, n2, d, cota = 1e-10) 29873.042 33244.4060 38376.3296 36196.2035 39391.2465 165837.57   100   b
+    ##  eTest_veloz(k1, k2, n1, n2, d, cota_test = 1e-10)   495.942   533.6825   923.6626   566.0955   671.9105  28514.31   100  a
+
+La implementación rápida es varios órdenes de magnitud más rápida que la
+anterior.
+
+Tiempo de ejecución del cálculo de
+potencia:
+
+``` r
+microbenchmark::microbenchmark(potencia_eTest(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, cota_potencia = 1E-03),
+                               potencia_eTest_veloz(lambda1_esperado, lambda2_esperado, n1_esperado, n2_esperado, 
+                                                    cota_potencia = 1E-03, inicio_acelerado = FALSE),
+                               times = 1)
+```
+
+    ## Unit: milliseconds
+    ##                                                                                                                                      expr         min
+    ##                                  potencia_eTest(lambda1_esperado, lambda2_esperado, n1_esperado,      n2_esperado, cota_potencia = 0.001) 22908.00728
+    ##  potencia_eTest_veloz(lambda1_esperado, lambda2_esperado, n1_esperado,      n2_esperado, cota_potencia = 0.001, inicio_acelerado = FALSE)    48.46956
+    ##           lq        mean      median          uq         max neval
+    ##  22908.00728 22908.00728 22908.00728 22908.00728 22908.00728     1
+    ##     48.46956    48.46956    48.46956    48.46956    48.46956     1
+
+La mejora en velocidad es aún más notable aquí, dado que se pasa del
+orden de los segundos a los milisegundos.
